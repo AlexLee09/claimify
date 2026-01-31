@@ -364,6 +364,32 @@ export default function FinanceView() {
         <TabsContent value="analytics" className="space-y-6">
           {analyticsData && analyticsSummary && (
             <>
+              {/* Generated Infographic - at the top */}
+              {(infographicUrl || generatingInfographic) && (
+                <Card className="bg-gradient-to-br from-pink-50 to-orange-50 border-pink-200">
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <ImageIcon className="w-5 h-5 text-pink-500" />
+                      AI-Generated Infographic
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {generatingInfographic ? (
+                      <div className="flex flex-col items-center justify-center py-12">
+                        <Loader2 className="w-12 h-12 animate-spin text-pink-500 mb-4" />
+                        <p className="text-muted-foreground">Generating infographic with AI...</p>
+                      </div>
+                    ) : infographicUrl ? (
+                      <img 
+                        src={infographicUrl} 
+                        alt="Analytics Infographic" 
+                        className="w-full rounded-lg border"
+                      />
+                    ) : null}
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Executive Summary */}
               <Card className="bg-gradient-to-br from-purple-50 to-blue-50 border-purple-200">
                 <CardHeader>
@@ -673,55 +699,7 @@ export default function FinanceView() {
                 </CardContent>
               </Card>
 
-              {/* Infographic Prompt (for manual generation) */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <ImageIcon className="w-5 h-5" />
-                    AI Infographic Prompt
-                  </CardTitle>
-                  <CardDescription>
-                    Use this prompt with an AI image generator to create a visual summary
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="p-4 bg-muted rounded-lg">
-                    <p className="text-sm font-mono whitespace-pre-wrap">
-                      {analyticsSummary.infographicPrompt}
-                    </p>
-                  </div>
-                  <Button 
-                    variant="outline" 
-                    className="mt-3"
-                    onClick={() => {
-                      navigator.clipboard.writeText(analyticsSummary.infographicPrompt);
-                      toast.success("Prompt copied to clipboard!");
-                    }}
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    Copy Prompt
-                  </Button>
-                </CardContent>
-              </Card>
 
-              {/* Generated Infographic */}
-              {infographicUrl && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <ImageIcon className="w-5 h-5 text-pink-500" />
-                      Generated Infographic
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <img 
-                      src={infographicUrl} 
-                      alt="Analytics Infographic" 
-                      className="w-full rounded-lg border"
-                    />
-                  </CardContent>
-                </Card>
-              )}
             </>
           )}
 

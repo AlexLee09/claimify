@@ -95,3 +95,5 @@
 - [x] Fix Generate AI Analytics Report button not working (was working, just needed to click Analytics tab)
 - [x] Auto-generate infographic using Gemini nanobanana when analytics load
 - [x] Change "AI Executive Summary" text to "Summary"
+- [x] Remove AI Infographic Prompt section from analytics
+- [x] Move generated infographic to top of analytics page
