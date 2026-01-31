@@ -360,3 +360,153 @@ Check for:
     };
   }
 }
+
+
+// ============ ANALYTICS SUMMARY GENERATION ============
+export interface AnalyticsSummary {
+  executiveSummary: string;
+  keyInsights: string[];
+  recommendations: string[];
+  riskAlerts: string[];
+  infographicPrompt: string;
+}
+
+export async function generateAnalyticsSummary(analyticsData: any): Promise<AnalyticsSummary> {
+  const systemPrompt = `You are a financial analyst for Bok Seng Logistics, a Singapore-based logistics company. 
+Analyze the provided expense data and generate insights for the Finance Director.
+
+Your response must be in JSON format with these fields:
+- executiveSummary: A 2-3 sentence overview of the expense situation
+- keyInsights: Array of 4-6 key findings (strings)
+- recommendations: Array of 3-4 actionable recommendations (strings)
+- riskAlerts: Array of any concerning patterns or risks (strings, can be empty)
+- infographicPrompt: A detailed prompt for generating a visual infographic summarizing the data
+
+Focus on:
+1. Spending patterns and trends
+2. Category distribution
+3. Anomalies and policy violations
+4. Cost optimization opportunities
+5. Compliance concerns`;
+
+  const userPrompt = `Analyze this expense data for the past 2 weeks:
+
+SUMMARY:
+- Total Receipts: ${analyticsData.summary.totalReceipts}
+- Total Amount: S$${analyticsData.summary.totalAmount.toFixed(2)}
+- Total GST: S$${analyticsData.summary.totalGst.toFixed(2)}
+- Average Receipt: S$${analyticsData.summary.averageAmount.toFixed(2)}
+- Approval Rate: ${analyticsData.summary.approvalRate.toFixed(1)}%
+- Rejection Rate: ${analyticsData.summary.rejectionRate.toFixed(1)}%
+
+BY CATEGORY:
+${analyticsData.byCategory.map((c: any) => `- ${c.category}: ${c.count} receipts, S$${c.totalAmount.toFixed(2)} (${c.percentage.toFixed(1)}%)`).join('\n')}
+
+BY DEPARTMENT:
+${analyticsData.byDepartment.map((d: any) => `- ${d.department}: ${d.count} receipts, S$${d.totalAmount.toFixed(2)}`).join('\n')}
+
+TOP MERCHANTS:
+${analyticsData.topMerchants.slice(0, 5).map((m: any) => `- ${m.merchant}: ${m.count} visits, S$${m.totalAmount.toFixed(2)}`).join('\n')}
+
+ANOMALIES DETECTED:
+${analyticsData.anomalies.map((a: any) => `- [${a.severity.toUpperCase()}] ${a.description}`).join('\n') || 'None detected'}
+
+FLAGGED RECEIPTS:
+${analyticsData.flaggedReceipts.slice(0, 5).map((r: any) => `- ${r.merchant}: S$${r.amount.toFixed(2)} - Flags: ${r.flags.join(', ')}`).join('\n') || 'None'}
+
+Generate a comprehensive analysis with insights and recommendations.`;
+
+  try {
+    const response = await invokeLLM({
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "analytics_summary",
+          strict: true,
+          schema: {
+            type: "object",
+            properties: {
+              executiveSummary: { type: "string", description: "2-3 sentence overview" },
+              keyInsights: { 
+                type: "array", 
+                items: { type: "string" },
+                description: "4-6 key findings"
+              },
+              recommendations: { 
+                type: "array", 
+                items: { type: "string" },
+                description: "3-4 actionable recommendations"
+              },
+              riskAlerts: { 
+                type: "array", 
+                items: { type: "string" },
+                description: "Concerning patterns or risks"
+              },
+              infographicPrompt: { type: "string", description: "Prompt for generating visual infographic" }
+            },
+            required: ["executiveSummary", "keyInsights", "recommendations", "riskAlerts", "infographicPrompt"],
+            additionalProperties: false
+          }
+        }
+      }
+    });
+    
+    // Handle response
+    if (!response || !response.choices || response.choices.length === 0) {
+      console.error("[Gemini] No choices in analytics response");
+      return getDefaultAnalyticsSummary(analyticsData);
+    }
+    
+    const choice = response.choices[0];
+    let content = "";
+    
+    if (choice.message?.content) {
+      if (typeof choice.message.content === "string") {
+        content = choice.message.content;
+      } else if (Array.isArray(choice.message.content)) {
+        const textPart = choice.message.content.find((p: any) => p.type === "text") as { type: "text"; text: string } | undefined;
+        content = textPart?.text || "";
+      }
+    }
+    
+    if (!content) {
+      return getDefaultAnalyticsSummary(analyticsData);
+    }
+    
+    const parsed = JSON.parse(content);
+    return {
+      executiveSummary: parsed.executiveSummary || "",
+      keyInsights: parsed.keyInsights || [],
+      recommendations: parsed.recommendations || [],
+      riskAlerts: parsed.riskAlerts || [],
+      infographicPrompt: parsed.infographicPrompt || ""
+    };
+    
+  } catch (error) {
+    console.error("[Gemini] Analytics summary error:", error);
+    return getDefaultAnalyticsSummary(analyticsData);
+  }
+}
+
+function getDefaultAnalyticsSummary(analyticsData: any): AnalyticsSummary {
+  return {
+    executiveSummary: `Over the past 2 weeks, ${analyticsData.summary.totalReceipts} receipts totaling S$${analyticsData.summary.totalAmount.toFixed(2)} were processed with an approval rate of ${analyticsData.summary.approvalRate.toFixed(1)}%.`,
+    keyInsights: [
+      `Total spending: S$${analyticsData.summary.totalAmount.toFixed(2)} across ${analyticsData.summary.totalReceipts} receipts`,
+      `Average receipt value: S$${analyticsData.summary.averageAmount.toFixed(2)}`,
+      `Top category: ${analyticsData.byCategory[0]?.category || 'N/A'}`,
+      `${analyticsData.anomalies.length} anomalies detected`
+    ],
+    recommendations: [
+      "Review flagged receipts for policy compliance",
+      "Monitor high-value transactions",
+      "Consider category-specific spending limits"
+    ],
+    riskAlerts: analyticsData.anomalies.filter((a: any) => a.severity === "high").map((a: any) => a.description),
+    infographicPrompt: `Create a professional business infographic showing expense analysis: Total S$${analyticsData.summary.totalAmount.toFixed(2)}, ${analyticsData.summary.totalReceipts} receipts, top categories pie chart, department breakdown bar chart, key metrics dashboard style`
+  };
+}

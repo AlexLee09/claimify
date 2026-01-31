@@ -87,3 +87,8 @@
 - [x] Fix AI incorrectly flagging past dates as future (date comparison bug)
 - [x] Make receipt details modal even wider to prevent content overlap
 - [x] Fix category and date fields overlapping in receipt details modal
+
+## Analytics Feature
+- [x] Create seed script with 2 weeks of realistic dummy receipt data
+- [x] Build analytics API endpoint for receipt trends and anomaly detection
+- [x] Create Finance Director analytics UI with AI infographic generation

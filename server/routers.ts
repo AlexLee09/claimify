@@ -5,7 +5,7 @@ import { publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import { nanoid } from "nanoid";
 import { storagePut } from "./storage";
-import { extractReceiptData } from "./gemini";
+import { extractReceiptData, generateAnalyticsSummary } from "./gemini";
 import { expenseCategories, receiptStatuses } from "../drizzle/schema";
 import * as db from "./db";
 
@@ -435,6 +435,25 @@ const activityRouter = router({
     }),
 });
 
+// ============ ANALYTICS ROUTER ============
+const analyticsRouter = router({
+  // Get full analytics data
+  getData: publicProcedure
+    .input(z.object({ departmentId: z.number().optional() }))
+    .query(async ({ input }) => {
+      return db.getAnalyticsData(input.departmentId);
+    }),
+  
+  // Generate AI summary and infographic prompt
+  generateSummary: publicProcedure
+    .input(z.object({ departmentId: z.number().optional() }))
+    .mutation(async ({ input }) => {
+      const analyticsData = await db.getAnalyticsData(input.departmentId);
+      const summary = await generateAnalyticsSummary(analyticsData);
+      return { analyticsData, summary };
+    }),
+});
+
 // ============ SEED ROUTER ============
 const seedRouter = router({
   init: publicProcedure.mutation(async () => {
@@ -460,6 +479,7 @@ export const appRouter = router({
   receipt: receiptRouter,
   batch: batchRouter,
   activity: activityRouter,
+  analytics: analyticsRouter,
   seed: seedRouter,
 });
 

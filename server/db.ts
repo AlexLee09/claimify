@@ -524,3 +524,278 @@ export async function logBatchAction(
     metadata
   });
 }
+
+
+// ============ ANALYTICS HELPERS ============
+export interface AnalyticsData {
+  summary: {
+    totalReceipts: number;
+    totalAmount: number;
+    totalGst: number;
+    averageAmount: number;
+    approvalRate: number;
+    rejectionRate: number;
+  };
+  byCategory: Array<{
+    category: string;
+    count: number;
+    totalAmount: number;
+    averageAmount: number;
+    percentage: number;
+  }>;
+  byDepartment: Array<{
+    department: string;
+    count: number;
+    totalAmount: number;
+    averageAmount: number;
+  }>;
+  byStaff: Array<{
+    staffName: string;
+    department: string;
+    count: number;
+    totalAmount: number;
+  }>;
+  byStatus: Array<{
+    status: string;
+    count: number;
+    totalAmount: number;
+  }>;
+  topMerchants: Array<{
+    merchant: string;
+    count: number;
+    totalAmount: number;
+  }>;
+  anomalies: Array<{
+    type: string;
+    description: string;
+    severity: "low" | "medium" | "high";
+    details: Record<string, any>;
+  }>;
+  trends: {
+    dailySpending: Array<{
+      date: string;
+      amount: number;
+      count: number;
+    }>;
+    categoryTrend: Array<{
+      category: string;
+      trend: "increasing" | "stable" | "decreasing";
+      changePercent: number;
+    }>;
+  };
+  flaggedReceipts: Array<{
+    id: number;
+    merchant: string;
+    amount: number;
+    flags: string[];
+    staffName: string;
+  }>;
+}
+
+export async function getAnalyticsData(departmentId?: number): Promise<AnalyticsData> {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database not available");
+  }
+  
+  // Get all receipts (optionally filtered by department)
+  let allReceipts;
+  if (departmentId) {
+    allReceipts = await db.select().from(receipts).where(eq(receipts.departmentId, departmentId));
+  } else {
+    allReceipts = await db.select().from(receipts);
+  }
+  
+  // Calculate summary stats
+  const totalReceipts = allReceipts.length;
+  const totalAmount = allReceipts.reduce((sum, r) => sum + parseFloat(r.amountTotal || "0"), 0);
+  const totalGst = allReceipts.reduce((sum, r) => sum + parseFloat(r.amountGst || "0"), 0);
+  const averageAmount = totalReceipts > 0 ? totalAmount / totalReceipts : 0;
+  
+  const paidReceipts = allReceipts.filter(r => r.status === "paid" || r.status === "hod_approved");
+  const rejectedReceipts = allReceipts.filter(r => r.status === "rejected");
+  const approvalRate = totalReceipts > 0 ? (paidReceipts.length / totalReceipts) * 100 : 0;
+  const rejectionRate = totalReceipts > 0 ? (rejectedReceipts.length / totalReceipts) * 100 : 0;
+  
+  // Group by category
+  const categoryMap = new Map<string, { count: number; total: number }>();
+  for (const r of allReceipts) {
+    const cat = r.category || "Other";
+    const existing = categoryMap.get(cat) || { count: 0, total: 0 };
+    categoryMap.set(cat, {
+      count: existing.count + 1,
+      total: existing.total + parseFloat(r.amountTotal || "0")
+    });
+  }
+  const byCategory = Array.from(categoryMap.entries()).map(([category, data]) => ({
+    category,
+    count: data.count,
+    totalAmount: data.total,
+    averageAmount: data.count > 0 ? data.total / data.count : 0,
+    percentage: totalReceipts > 0 ? (data.count / totalReceipts) * 100 : 0
+  })).sort((a, b) => b.totalAmount - a.totalAmount);
+  
+  // Group by department
+  const deptMap = new Map<string, { count: number; total: number }>();
+  for (const r of allReceipts) {
+    const dept = r.departmentName || "Unknown";
+    const existing = deptMap.get(dept) || { count: 0, total: 0 };
+    deptMap.set(dept, {
+      count: existing.count + 1,
+      total: existing.total + parseFloat(r.amountTotal || "0")
+    });
+  }
+  const byDepartment = Array.from(deptMap.entries()).map(([department, data]) => ({
+    department,
+    count: data.count,
+    totalAmount: data.total,
+    averageAmount: data.count > 0 ? data.total / data.count : 0
+  })).sort((a, b) => b.totalAmount - a.totalAmount);
+  
+  // Group by staff
+  const staffMap = new Map<string, { count: number; total: number; department: string }>();
+  for (const r of allReceipts) {
+    const name = r.staffName || "Unknown";
+    const existing = staffMap.get(name) || { count: 0, total: 0, department: r.departmentName || "Unknown" };
+    staffMap.set(name, {
+      count: existing.count + 1,
+      total: existing.total + parseFloat(r.amountTotal || "0"),
+      department: existing.department
+    });
+  }
+  const byStaff = Array.from(staffMap.entries()).map(([staffName, data]) => ({
+    staffName,
+    department: data.department,
+    count: data.count,
+    totalAmount: data.total
+  })).sort((a, b) => b.totalAmount - a.totalAmount);
+  
+  // Group by status
+  const statusMap = new Map<string, { count: number; total: number }>();
+  for (const r of allReceipts) {
+    const status = r.status || "unknown";
+    const existing = statusMap.get(status) || { count: 0, total: 0 };
+    statusMap.set(status, {
+      count: existing.count + 1,
+      total: existing.total + parseFloat(r.amountTotal || "0")
+    });
+  }
+  const byStatus = Array.from(statusMap.entries()).map(([status, data]) => ({
+    status,
+    count: data.count,
+    totalAmount: data.total
+  }));
+  
+  // Top merchants
+  const merchantMap = new Map<string, { count: number; total: number }>();
+  for (const r of allReceipts) {
+    const merchant = r.merchantName || "Unknown";
+    const existing = merchantMap.get(merchant) || { count: 0, total: 0 };
+    merchantMap.set(merchant, {
+      count: existing.count + 1,
+      total: existing.total + parseFloat(r.amountTotal || "0")
+    });
+  }
+  const topMerchants = Array.from(merchantMap.entries())
+    .map(([merchant, data]) => ({
+      merchant,
+      count: data.count,
+      totalAmount: data.total
+    }))
+    .sort((a, b) => b.totalAmount - a.totalAmount)
+    .slice(0, 10);
+  
+  // Detect anomalies
+  const anomalies: AnalyticsData["anomalies"] = [];
+  
+  // High value receipts (> $200)
+  const highValueReceipts = allReceipts.filter(r => parseFloat(r.amountTotal || "0") > 200);
+  if (highValueReceipts.length > 0) {
+    anomalies.push({
+      type: "high_value_transactions",
+      description: `${highValueReceipts.length} receipts exceed $200 threshold`,
+      severity: highValueReceipts.length > 5 ? "high" : "medium",
+      details: { count: highValueReceipts.length, receipts: highValueReceipts.slice(0, 5).map(r => ({ id: r.id, merchant: r.merchantName, amount: r.amountTotal })) }
+    });
+  }
+  
+  // Flagged receipts
+  const flaggedReceipts = allReceipts.filter(r => {
+    const flags = r.aiFlags as string[] | null;
+    return flags && flags.length > 0;
+  });
+  if (flaggedReceipts.length > 0) {
+    anomalies.push({
+      type: "ai_flagged_receipts",
+      description: `${flaggedReceipts.length} receipts have AI-detected policy concerns`,
+      severity: flaggedReceipts.length > 10 ? "high" : "medium",
+      details: { count: flaggedReceipts.length }
+    });
+  }
+  
+  // Staff with unusually high spending
+  const avgStaffSpending = byStaff.length > 0 ? byStaff.reduce((sum, s) => sum + s.totalAmount, 0) / byStaff.length : 0;
+  const highSpenders = byStaff.filter(s => s.totalAmount > avgStaffSpending * 2);
+  if (highSpenders.length > 0) {
+    anomalies.push({
+      type: "high_spending_staff",
+      description: `${highSpenders.length} staff members have spending 2x above average`,
+      severity: "medium",
+      details: { avgSpending: avgStaffSpending, highSpenders: highSpenders.slice(0, 3) }
+    });
+  }
+  
+  // Calculate daily spending trends
+  const dailyMap = new Map<string, { amount: number; count: number }>();
+  for (const r of allReceipts) {
+    if (r.transactionDate) {
+      const dateStr = new Date(r.transactionDate).toISOString().split("T")[0];
+      const existing = dailyMap.get(dateStr) || { amount: 0, count: 0 };
+      dailyMap.set(dateStr, {
+        amount: existing.amount + parseFloat(r.amountTotal || "0"),
+        count: existing.count + 1
+      });
+    }
+  }
+  const dailySpending = Array.from(dailyMap.entries())
+    .map(([date, data]) => ({ date, amount: data.amount, count: data.count }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+  
+  // Category trends (simplified - just mark as stable for now)
+  const categoryTrend = byCategory.map(c => ({
+    category: c.category,
+    trend: "stable" as const,
+    changePercent: 0
+  }));
+  
+  // Get flagged receipt details
+  const flaggedReceiptDetails = flaggedReceipts.slice(0, 10).map(r => ({
+    id: r.id,
+    merchant: r.merchantName || "Unknown",
+    amount: parseFloat(r.amountTotal || "0"),
+    flags: (r.aiFlags as string[]) || [],
+    staffName: r.staffName
+  }));
+  
+  return {
+    summary: {
+      totalReceipts,
+      totalAmount,
+      totalGst,
+      averageAmount,
+      approvalRate,
+      rejectionRate
+    },
+    byCategory,
+    byDepartment,
+    byStaff,
+    byStatus,
+    topMerchants,
+    anomalies,
+    trends: {
+      dailySpending,
+      categoryTrend
+    },
+    flaggedReceipts: flaggedReceiptDetails
+  };
+}
