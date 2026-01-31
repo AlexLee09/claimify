@@ -15,7 +15,6 @@ import {
   UserCheck,
   Landmark,
   Building2,
-  Truck,
 } from "lucide-react";
 
 interface MainLayoutProps {
@@ -78,9 +77,11 @@ export default function MainLayout({ children }: MainLayoutProps) {
         {/* Logo/Brand */}
         <div className="p-4 border-b">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
-              <Truck className="w-6 h-6 text-primary-foreground" />
-            </div>
+            <img 
+              src="/bok-seng-logo.png" 
+              alt="Bok Seng" 
+              className="w-10 h-10 object-contain"
+            />
             <div>
               <h1 className="font-bold text-lg leading-tight">Bok Seng</h1>
               <p className="text-xs text-muted-foreground">Petty Cash System</p>
@@ -175,15 +176,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
           </div>
         </nav>
 
-        {/* Footer */}
-        <div className="p-4 border-t">
-          <p className="text-xs text-muted-foreground text-center">
-            Hackathon Demo Mode
-          </p>
-          <p className="text-xs text-muted-foreground text-center">
-            No authentication required
-          </p>
-        </div>
+        {/* Footer - removed hackathon demo text */}
       </aside>
 
       {/* Main Content */}

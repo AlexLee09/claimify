@@ -231,7 +231,7 @@ export default function HodView() {
           setRejectedIds(new Set());
         }}
       >
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Package className="w-5 h-5" />
@@ -242,7 +242,7 @@ export default function HodView() {
           {selectedBatch && (
             <div className="space-y-6">
               {/* Summary Stats */}
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <Card>
                   <CardContent className="pt-4">
                     <p className="text-sm text-muted-foreground">Original Total</p>
@@ -323,7 +323,8 @@ export default function HodView() {
                   </p>
                 </CardHeader>
                 <CardContent>
-                  <Table>
+                  <div className="overflow-x-auto">
+                <Table className="min-w-full">
                     <TableHeader>
                       <TableRow>
                         <TableHead className="w-12">Include</TableHead>
@@ -401,6 +402,7 @@ export default function HodView() {
                       })}
                     </TableBody>
                   </Table>
+                </div>
                 </CardContent>
               </Card>
 

@@ -61,6 +61,7 @@ IMPORTANT INSTRUCTIONS:
 6. Provide confidence score based on image quality and extraction certainty
 7. For dates, use ISO format (YYYY-MM-DD)
 8. For amounts, extract the TOTAL amount paid
+9. If you cannot read a field, use empty string "" for text fields and 0 for numeric fields
 
 CRITICAL FLAGS TO DETECT:
 - "Alcohol detected" - if any alcoholic beverages found
@@ -72,10 +73,10 @@ CRITICAL FLAGS TO DETECT:
 - "Suspicious item" - any non-reimbursable items detected`;
 
   const userPrompt = `Analyze this receipt image and extract the following information:
-1. Merchant/Vendor name
-2. Transaction date
-3. Total amount (in SGD)
-4. GST amount (calculate if not shown - 9% of subtotal)
+1. Merchant/Vendor name (use empty string if not visible)
+2. Transaction date (use empty string if not visible)
+3. Total amount in SGD (use 0 if not visible)
+4. GST amount in SGD (calculate as 9% of subtotal if not shown, use 0 if cannot determine)
 5. Most appropriate expense category
 6. Any policy violations or flags
 7. Your confidence level (0-100)
@@ -112,20 +113,20 @@ Be thorough in checking for policy violations. If you detect alcohol, tobacco, o
             type: "object",
             properties: {
               merchantName: { 
-                type: ["string", "null"],
-                description: "Name of the merchant/vendor"
+                type: "string",
+                description: "Name of the merchant/vendor, empty string if not visible"
               },
               transactionDate: { 
-                type: ["string", "null"],
-                description: "Transaction date in YYYY-MM-DD format"
+                type: "string",
+                description: "Transaction date in YYYY-MM-DD format, empty string if not visible"
               },
               amountTotal: { 
-                type: ["number", "null"],
-                description: "Total amount in SGD"
+                type: "number",
+                description: "Total amount in SGD, 0 if not visible"
               },
               amountGst: { 
-                type: ["number", "null"],
-                description: "GST amount in SGD (9% if not shown)"
+                type: "number",
+                description: "GST amount in SGD (9% if not shown), 0 if cannot determine"
               },
               category: { 
                 type: "string",
@@ -134,8 +135,6 @@ Be thorough in checking for policy violations. If you detect alcohol, tobacco, o
               },
               confidence: { 
                 type: "integer",
-                minimum: 0,
-                maximum: 100,
                 description: "Confidence score 0-100"
               },
               reasoning: { 
@@ -169,6 +168,12 @@ Be thorough in checking for policy violations. If you detect alcohol, tobacco, o
     });
 
     console.log("[Gemini] LLM Response received:", JSON.stringify(response).substring(0, 500));
+
+    // Check if response has an error
+    if ((response as any).error) {
+      console.error("[Gemini] API Error:", JSON.stringify((response as any).error));
+      throw new Error(`API Error: ${(response as any).error.message || "Unknown error"}`);
+    }
 
     // Check if response has the expected structure
     if (!response) {
@@ -213,7 +218,20 @@ Be thorough in checking for policy violations. If you detect alcohol, tobacco, o
 
     console.log("[Gemini] Parsing JSON content:", textContent.substring(0, 200));
 
-    const result = JSON.parse(textContent) as ReceiptExtractionResult;
+    const parsed = JSON.parse(textContent);
+    
+    // Convert empty strings to null for optional fields
+    const result: ReceiptExtractionResult = {
+      merchantName: parsed.merchantName || null,
+      transactionDate: parsed.transactionDate || null,
+      amountTotal: parsed.amountTotal || null,
+      amountGst: parsed.amountGst || null,
+      category: parsed.category,
+      confidence: parsed.confidence,
+      reasoning: parsed.reasoning,
+      flags: parsed.flags || [],
+      lineItems: parsed.lineItems || []
+    };
     
     // Additional date validation
     if (result.transactionDate) {
@@ -298,6 +316,11 @@ Check for:
         }
       }
     });
+
+    // Check for API error
+    if ((response as any).error) {
+      throw new Error(`API Error: ${(response as any).error.message || "Unknown error"}`);
+    }
 
     if (!response?.choices?.[0]?.message?.content) {
       throw new Error("Invalid response from AI service");

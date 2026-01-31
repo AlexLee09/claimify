@@ -65,14 +65,56 @@ vi.mock("./db", () => ({
     },
   ]),
   getAdminApprovedReceipts: vi.fn().mockResolvedValue([]),
+  getReceiptById: vi.fn().mockResolvedValue({
+    id: 1,
+    staffName: "John Tan",
+    merchantName: "Shell Station",
+    amountTotal: "45.00",
+    amountGst: "3.93",
+    departmentId: 1,
+    category: "Transport and Vehicle",
+    status: "submitted",
+    aiConfidence: 95,
+    aiFlags: [],
+    createdAt: new Date(),
+  }),
   updateReceiptStatus: vi.fn().mockResolvedValue(undefined),
   rejectReceipt: vi.fn().mockResolvedValue(undefined),
+  createReceipt: vi.fn().mockResolvedValue(1),
   createBatch: vi.fn().mockResolvedValue(1),
+  getBatchById: vi.fn().mockResolvedValue({
+    id: 1,
+    departmentId: 1,
+    totalAmount: "150.00",
+    totalGst: "13.13",
+    status: "pending_hod",
+    createdAt: new Date(),
+  }),
   getBatchesByDepartment: vi.fn().mockResolvedValue([]),
   getPendingHodBatches: vi.fn().mockResolvedValue([]),
   getPendingFinanceBatches: vi.fn().mockResolvedValue([]),
   getReceiptsByBatch: vi.fn().mockResolvedValue([]),
+  updateBatchStatus: vi.fn().mockResolvedValue(undefined),
+  recalculateBatchTotals: vi.fn().mockResolvedValue(undefined),
   seedInitialData: vi.fn().mockResolvedValue(undefined),
+  // Activity log functions
+  createActivityLog: vi.fn().mockResolvedValue(1),
+  getActivityLogsByDepartment: vi.fn().mockResolvedValue([
+    {
+      id: 1,
+      entityType: "receipt",
+      entityId: 1,
+      departmentId: 1,
+      action: "submitted",
+      actorRole: "staff",
+      actorName: "John Tan",
+      description: "Receipt submitted by John Tan",
+      createdAt: new Date(),
+    },
+  ]),
+  getActivityLogsByEntity: vi.fn().mockResolvedValue([]),
+  logReceiptAction: vi.fn().mockResolvedValue(undefined),
+  logBatchAction: vi.fn().mockResolvedValue(undefined),
 }));
 
 function createTestContext(): TrpcContext {
@@ -235,6 +277,35 @@ describe("Batch Router", () => {
     const caller = appRouter.createCaller(ctx);
 
     const result = await caller.batch.getPendingFinance();
+
+    expect(Array.isArray(result)).toBe(true);
+  });
+});
+
+describe("Activity Router", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("should get activity logs by department", async () => {
+    const ctx = createTestContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.activity.listByDepartment({ departmentId: 1 });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].action).toBe("submitted");
+    expect(result[0].actorName).toBe("John Tan");
+  });
+
+  it("should get activity logs by entity", async () => {
+    const ctx = createTestContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.activity.listByEntity({
+      entityType: "receipt",
+      entityId: 1,
+    });
 
     expect(Array.isArray(result)).toBe(true);
   });

@@ -15,6 +15,13 @@
       "when": 1769833917164,
       "tag": "0001_strange_multiple_man",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1769836159801,
+      "tag": "0002_dear_shadow_king",
+      "breakpoints": true
     }
   ]
 }

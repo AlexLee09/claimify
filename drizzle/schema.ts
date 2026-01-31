@@ -154,3 +154,45 @@ export const receipts = mysqlTable("receipts", {
 
 export type Receipt = typeof receipts.$inferSelect;
 export type InsertReceipt = typeof receipts.$inferInsert;
+
+/**
+ * Activity log for tracking all actions in the system
+ */
+export const activityLogs = mysqlTable("activity_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  
+  // What was affected
+  entityType: mysqlEnum("entityType", ["receipt", "batch", "department"]).notNull(),
+  entityId: int("entityId").notNull(),
+  
+  // Who did it
+  actorRole: mysqlEnum("actorRole", ["staff", "admin", "hod", "finance"]).notNull(),
+  actorName: varchar("actorName", { length: 100 }),
+  
+  // What happened
+  action: mysqlEnum("action", [
+    "submitted",
+    "admin_approved",
+    "admin_rejected",
+    "batch_created",
+    "hod_approved",
+    "hod_partial_approved",
+    "hod_rejected",
+    "finance_approved",
+    "finance_rejected",
+    "paid"
+  ]).notNull(),
+  
+  // Details
+  description: text("description").notNull(),
+  metadata: json("metadata").$type<Record<string, any>>(),
+  
+  // Department context
+  departmentId: int("departmentId").notNull(),
+  
+  // Timestamp
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ActivityLog = typeof activityLogs.$inferSelect;
+export type InsertActivityLog = typeof activityLogs.$inferInsert;

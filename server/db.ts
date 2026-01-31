@@ -451,3 +451,76 @@ export async function seedInitialData(): Promise<void> {
   
   console.log("[Database] Seeded initial departments");
 }
+
+
+// ============ ACTIVITY LOG HELPERS ============
+import { activityLogs, InsertActivityLog, ActivityLog } from "../drizzle/schema";
+
+export async function createActivityLog(data: InsertActivityLog): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(activityLogs).values(data);
+  return Number(result[0].insertId);
+}
+
+export async function getActivityLogsByDepartment(departmentId: number, limit = 50): Promise<ActivityLog[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(activityLogs)
+    .where(eq(activityLogs.departmentId, departmentId))
+    .orderBy(desc(activityLogs.createdAt))
+    .limit(limit);
+}
+
+export async function getActivityLogsByEntity(entityType: "receipt" | "batch" | "department", entityId: number): Promise<ActivityLog[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(activityLogs)
+    .where(and(
+      eq(activityLogs.entityType, entityType),
+      eq(activityLogs.entityId, entityId)
+    ))
+    .orderBy(desc(activityLogs.createdAt));
+}
+
+export async function logReceiptAction(
+  receiptId: number,
+  departmentId: number,
+  action: InsertActivityLog["action"],
+  actorRole: InsertActivityLog["actorRole"],
+  description: string,
+  actorName?: string,
+  metadata?: Record<string, any>
+): Promise<void> {
+  await createActivityLog({
+    entityType: "receipt",
+    entityId: receiptId,
+    departmentId,
+    action,
+    actorRole,
+    actorName,
+    description,
+    metadata
+  });
+}
+
+export async function logBatchAction(
+  batchId: number,
+  departmentId: number,
+  action: InsertActivityLog["action"],
+  actorRole: InsertActivityLog["actorRole"],
+  description: string,
+  actorName?: string,
+  metadata?: Record<string, any>
+): Promise<void> {
+  await createActivityLog({
+    entityType: "batch",
+    entityId: batchId,
+    departmentId,
+    action,
+    actorRole,
+    actorName,
+    description,
+    metadata
+  });
+}

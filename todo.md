@@ -71,3 +71,11 @@
 
 ## Bug Fixes
 - [x] Fix upload error: Cannot read properties of undefined (reading '0') in AI extraction
+- [x] Fix AI extraction returning no choices from LLM API
+
+## Polish Items
+- [x] Dept admin can see top-up requests after sending them
+- [x] Fix HOD dialog horizontal scroll issue
+- [x] Add Bok Seng logo to top left of sidebar
+- [x] Remove "Hackathon Demo Mode" text from sidebar
+- [x] Add activity logging for rejected items visible to dept admin
