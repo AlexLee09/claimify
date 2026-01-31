@@ -6,6 +6,7 @@ import { z } from "zod";
 import { nanoid } from "nanoid";
 import { storagePut } from "./storage";
 import { extractReceiptData, generateAnalyticsSummary } from "./gemini";
+import { generateImage } from "./_core/imageGeneration";
 import { expenseCategories, receiptStatuses } from "../drizzle/schema";
 import * as db from "./db";
 
@@ -451,6 +452,19 @@ const analyticsRouter = router({
       const analyticsData = await db.getAnalyticsData(input.departmentId);
       const summary = await generateAnalyticsSummary(analyticsData);
       return { analyticsData, summary };
+    }),
+  
+  // Generate infographic image using nanobanana
+  generateInfographic: publicProcedure
+    .input(z.object({ prompt: z.string() }))
+    .mutation(async ({ input }) => {
+      try {
+        const result = await generateImage({ prompt: input.prompt });
+        return { success: true, url: result.url };
+      } catch (error) {
+        console.error("Infographic generation error:", error);
+        return { success: false, url: null, error: String(error) };
+      }
     }),
 });
 

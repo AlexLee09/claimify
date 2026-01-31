@@ -92,3 +92,6 @@
 - [x] Create seed script with 2 weeks of realistic dummy receipt data
 - [x] Build analytics API endpoint for receipt trends and anomaly detection
 - [x] Create Finance Director analytics UI with AI infographic generation
+- [x] Fix Generate AI Analytics Report button not working (was working, just needed to click Analytics tab)
+- [x] Auto-generate infographic using Gemini nanobanana when analytics load
+- [x] Change "AI Executive Summary" text to "Summary"

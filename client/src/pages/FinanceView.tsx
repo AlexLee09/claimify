@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -107,6 +107,7 @@ export default function FinanceView() {
   // Mutations
   const approveMutation = trpc.batch.financeApprove.useMutation();
   const analyticsMutation = trpc.analytics.generateSummary.useMutation();
+  const infographicMutation = trpc.analytics.generateInfographic.useMutation();
 
   // Calculate GL breakdown for selected batch
   const glBreakdown = useMemo(() => {
@@ -171,39 +172,35 @@ export default function FinanceView() {
     }
   };
 
-  const handleGenerateInfographic = async () => {
-    if (!analyticsMutation.data?.summary?.infographicPrompt) {
-      toast.error("Please generate analytics first");
+  const handleGenerateInfographic = async (prompt: string) => {
+    if (!prompt) {
+      toast.error("No infographic prompt available");
       return;
     }
 
     setGeneratingInfographic(true);
     try {
-      // Call the image generation API
-      const response = await fetch("/api/generate-infographic", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: analyticsMutation.data.summary.infographicPrompt,
-          analyticsData: analyticsMutation.data.analyticsData,
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setInfographicUrl(data.url);
+      const result = await infographicMutation.mutateAsync({ prompt });
+      if (result.success && result.url) {
+        setInfographicUrl(result.url);
         toast.success("Infographic generated successfully!");
       } else {
-        // Fallback: show the prompt for manual generation
-        toast.info("Infographic generation available - see AI prompt below");
+        toast.error("Failed to generate infographic");
       }
     } catch (error) {
       console.error("Infographic generation error:", error);
-      toast.info("View the AI-generated prompt to create your infographic");
+      toast.error("Failed to generate infographic");
     } finally {
       setGeneratingInfographic(false);
     }
   };
+
+  // Auto-generate infographic when analytics are loaded
+  useEffect(() => {
+    if (analyticsMutation.data?.summary?.infographicPrompt && !infographicUrl && !generatingInfographic) {
+      handleGenerateInfographic(analyticsMutation.data.summary.infographicPrompt);
+    }
+  }, [analyticsMutation.data?.summary?.infographicPrompt]);
 
   const analyticsData = analyticsMutation.data?.analyticsData;
   const analyticsSummary = analyticsMutation.data?.summary;
@@ -372,7 +369,7 @@ export default function FinanceView() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Sparkles className="w-5 h-5 text-purple-600" />
-                    AI Executive Summary
+                    Summary
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -381,7 +378,7 @@ export default function FinanceView() {
                   </p>
                   <div className="flex gap-3">
                     <Button
-                      onClick={handleGenerateInfographic}
+                      onClick={() => analyticsSummary?.infographicPrompt && handleGenerateInfographic(analyticsSummary.infographicPrompt)}
                       disabled={generatingInfographic}
                       className="bg-gradient-to-r from-pink-500 to-orange-500 hover:from-pink-600 hover:to-orange-600"
                     >
