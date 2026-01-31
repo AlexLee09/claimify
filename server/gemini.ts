@@ -65,12 +65,14 @@ IMPORTANT INSTRUCTIONS:
 
 CRITICAL FLAGS TO DETECT:
 - "Alcohol detected" - if any alcoholic beverages found
-- "Receipt too old" - if date is more than 30 days ago
+- "Receipt too old" - if date is more than 30 days before TODAY
 - "Excessive amount" - if meal exceeds S$40/person or petty cash exceeds S$50
 - "Missing date" - if date cannot be determined
 - "Missing merchant" - if vendor name unclear
 - "Low quality image" - if image is blurry or hard to read
-- "Suspicious item" - any non-reimbursable items detected`;
+- "Suspicious item" - any non-reimbursable items detected
+
+IMPORTANT: Today's date is ${new Date().toISOString().split('T')[0]}. Use this to correctly determine if a receipt is too old or in the future.`;
 
   const userPrompt = `Analyze this receipt image and extract the following information:
 1. Merchant/Vendor name (use empty string if not visible)
@@ -236,11 +238,26 @@ Be thorough in checking for policy violations. If you detect alcohol, tobacco, o
     // Additional date validation
     if (result.transactionDate) {
       const receiptDate = new Date(result.transactionDate);
-      const daysSinceReceipt = Math.floor((Date.now() - receiptDate.getTime()) / (1000 * 60 * 60 * 24));
+      const now = new Date();
+      const daysDifference = Math.floor((now.getTime() - receiptDate.getTime()) / (1000 * 60 * 60 * 24));
       
-      if (daysSinceReceipt > 30 && !result.flags.includes("Receipt too old")) {
+      // Remove any incorrect "future date" flags that the AI may have added
+      // (AI sometimes gets confused about the current date)
+      result.flags = result.flags.filter(flag => 
+        !flag.toLowerCase().includes("future") && 
+        !flag.toLowerCase().includes("in the future")
+      );
+      
+      // Check if receipt is actually in the future (negative days difference)
+      if (daysDifference < 0) {
+        if (!result.flags.includes("Future dated receipt")) {
+          result.flags.push("Future dated receipt");
+          result.reasoning += ` Note: Receipt date is ${Math.abs(daysDifference)} days in the future, which is suspicious.`;
+        }
+      } else if (daysDifference > 30 && !result.flags.includes("Receipt too old")) {
+        // Receipt is more than 30 days old
         result.flags.push("Receipt too old");
-        result.reasoning += ` Note: Receipt is ${daysSinceReceipt} days old, exceeding the 30-day policy limit.`;
+        result.reasoning += ` Note: Receipt is ${daysDifference} days old, exceeding the 30-day policy limit.`;
       }
     }
     
