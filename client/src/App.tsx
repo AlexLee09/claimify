@@ -1,39 +1,44 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import Home from "./pages/Home";
+import { PersonaProvider } from "./contexts/PersonaContext";
+import MainLayout from "./components/MainLayout";
+import StaffView from "./pages/StaffView";
+import AdminView from "./pages/AdminView";
+import HodView from "./pages/HodView";
+import FinanceView from "./pages/FinanceView";
 
 function Router() {
-  // make sure to consider if you need authentication for certain routes
   return (
-    <Switch>
-      <Route path={"/"} component={Home} />
-      <Route path={"/404"} component={NotFound} />
-      {/* Final fallback route */}
-      <Route component={NotFound} />
-    </Switch>
+    <MainLayout>
+      <Switch>
+        <Route path="/" component={StaffView} />
+        <Route path="/staff" component={StaffView} />
+        <Route path="/admin" component={AdminView} />
+        <Route path="/hod" component={HodView} />
+        <Route path="/finance" component={FinanceView} />
+        <Route>
+          <div className="flex items-center justify-center h-full">
+            <p className="text-muted-foreground">Page not found</p>
+          </div>
+        </Route>
+      </Switch>
+    </MainLayout>
   );
 }
-
-// NOTE: About Theme
-// - First choose a default theme according to your design style (dark or light bg), than change color palette in index.css
-//   to keep consistent foreground/background color across components
-// - If you want to make theme switchable, pass `switchable` ThemeProvider and use `useTheme` hook
 
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider
-        defaultTheme="light"
-        // switchable
-      >
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
+      <ThemeProvider defaultTheme="light">
+        <PersonaProvider>
+          <TooltipProvider>
+            <Toaster richColors position="top-right" />
+            <Router />
+          </TooltipProvider>
+        </PersonaProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );
