@@ -76,16 +76,12 @@ export default function MainLayout({ children }: MainLayoutProps) {
       <aside className="w-72 bg-card border-r flex flex-col">
         {/* Logo/Brand */}
         <div className="p-4 border-b">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center">
             <img 
               src="/bok-seng-logo.png" 
-              alt="Bok Seng" 
-              className="w-10 h-10 object-contain"
+              alt="Bok Seng Petty Cash System" 
+              className="h-14 object-contain"
             />
-            <div>
-              <h1 className="font-bold text-lg leading-tight">Bok Seng</h1>
-              <p className="text-xs text-muted-foreground">Petty Cash System</p>
-            </div>
           </div>
         </div>
 

@@ -538,7 +538,7 @@ export default function AdminView() {
         open={!!selectedReceipt}
         onOpenChange={() => setSelectedReceipt(null)}
       >
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Receipt Details</DialogTitle>
           </DialogHeader>

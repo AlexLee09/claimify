@@ -81,3 +81,6 @@
 - [x] Add activity logging for rejected items visible to dept admin
 
 - [x] Add more spacing between tab items in Admin view
+- [x] Make receipt details dialog wider with vertical scroll (Admin view)
+- [x] Make top-up request dialog much wider to fit all content (HOD view)
+- [x] Remove text from sidebar branding, show only larger logo

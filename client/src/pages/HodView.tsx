@@ -231,7 +231,7 @@ export default function HodView() {
           setRejectedIds(new Set());
         }}
       >
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
+        <DialogContent className="max-w-6xl w-[95vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Package className="w-5 h-5" />
