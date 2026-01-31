@@ -85,3 +85,4 @@
 - [x] Make top-up request dialog much wider to fit all content (HOD view)
 - [x] Remove text from sidebar branding, show only larger logo
 - [x] Fix AI incorrectly flagging past dates as future (date comparison bug)
+- [x] Make receipt details modal even wider to prevent content overlap
