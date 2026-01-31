@@ -83,107 +83,168 @@ CRITICAL FLAGS TO DETECT:
 
 Be thorough in checking for policy violations. If you detect alcohol, tobacco, or any prohibited items, flag them immediately.`;
 
-  const response = await invokeLLM({
-    messages: [
-      { role: "system", content: systemPrompt },
-      { 
-        role: "user", 
-        content: [
-          { type: "text", text: userPrompt },
-          { 
-            type: "image_url", 
-            image_url: { 
-              url: imageUrl,
-              detail: "high"
-            } 
-          }
-        ]
-      }
-    ],
-    response_format: {
-      type: "json_schema",
-      json_schema: {
-        name: "receipt_extraction",
-        strict: true,
-        schema: {
-          type: "object",
-          properties: {
-            merchantName: { 
-              type: ["string", "null"],
-              description: "Name of the merchant/vendor"
-            },
-            transactionDate: { 
-              type: ["string", "null"],
-              description: "Transaction date in YYYY-MM-DD format"
-            },
-            amountTotal: { 
-              type: ["number", "null"],
-              description: "Total amount in SGD"
-            },
-            amountGst: { 
-              type: ["number", "null"],
-              description: "GST amount in SGD (9% if not shown)"
-            },
-            category: { 
-              type: "string",
-              enum: [...expenseCategories],
-              description: "Expense category"
-            },
-            confidence: { 
-              type: "integer",
-              minimum: 0,
-              maximum: 100,
-              description: "Confidence score 0-100"
-            },
-            reasoning: { 
-              type: "string",
-              description: "Explanation of classification and any concerns"
-            },
-            flags: { 
-              type: "array",
-              items: { type: "string" },
-              description: "List of policy flags/warnings"
-            },
-            lineItems: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  description: { type: "string" },
-                  amount: { type: "number" }
-                },
-                required: ["description", "amount"],
-                additionalProperties: false
-              },
-              description: "Individual line items if visible"
+  try {
+    console.log("[Gemini] Starting receipt extraction for:", imageUrl.substring(0, 100) + "...");
+    
+    const response = await invokeLLM({
+      messages: [
+        { role: "system", content: systemPrompt },
+        { 
+          role: "user", 
+          content: [
+            { type: "text", text: userPrompt },
+            { 
+              type: "image_url", 
+              image_url: { 
+                url: imageUrl,
+                detail: "high"
+              } 
             }
-          },
-          required: ["merchantName", "transactionDate", "amountTotal", "amountGst", "category", "confidence", "reasoning", "flags", "lineItems"],
-          additionalProperties: false
+          ]
+        }
+      ],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "receipt_extraction",
+          strict: true,
+          schema: {
+            type: "object",
+            properties: {
+              merchantName: { 
+                type: ["string", "null"],
+                description: "Name of the merchant/vendor"
+              },
+              transactionDate: { 
+                type: ["string", "null"],
+                description: "Transaction date in YYYY-MM-DD format"
+              },
+              amountTotal: { 
+                type: ["number", "null"],
+                description: "Total amount in SGD"
+              },
+              amountGst: { 
+                type: ["number", "null"],
+                description: "GST amount in SGD (9% if not shown)"
+              },
+              category: { 
+                type: "string",
+                enum: [...expenseCategories],
+                description: "Expense category"
+              },
+              confidence: { 
+                type: "integer",
+                minimum: 0,
+                maximum: 100,
+                description: "Confidence score 0-100"
+              },
+              reasoning: { 
+                type: "string",
+                description: "Explanation of classification and any concerns"
+              },
+              flags: { 
+                type: "array",
+                items: { type: "string" },
+                description: "List of policy flags/warnings"
+              },
+              lineItems: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    description: { type: "string" },
+                    amount: { type: "number" }
+                  },
+                  required: ["description", "amount"],
+                  additionalProperties: false
+                },
+                description: "Individual line items if visible"
+              }
+            },
+            required: ["merchantName", "transactionDate", "amountTotal", "amountGst", "category", "confidence", "reasoning", "flags", "lineItems"],
+            additionalProperties: false
+          }
         }
       }
+    });
+
+    console.log("[Gemini] LLM Response received:", JSON.stringify(response).substring(0, 500));
+
+    // Check if response has the expected structure
+    if (!response) {
+      console.error("[Gemini] Empty response from LLM");
+      throw new Error("Empty response from AI service");
     }
-  });
 
-  const content = response.choices[0]?.message?.content;
-  if (!content || typeof content !== "string") {
-    throw new Error("Failed to get response from AI");
-  }
+    if (!response.choices || !Array.isArray(response.choices) || response.choices.length === 0) {
+      console.error("[Gemini] Invalid response structure - no choices:", JSON.stringify(response));
+      throw new Error("Invalid response from AI service - no choices returned");
+    }
 
-  const result = JSON.parse(content) as ReceiptExtractionResult;
-  
-  // Additional date validation
-  if (result.transactionDate) {
-    const receiptDate = new Date(result.transactionDate);
-    const daysSinceReceipt = Math.floor((Date.now() - receiptDate.getTime()) / (1000 * 60 * 60 * 24));
+    const choice = response.choices[0];
+    if (!choice || !choice.message) {
+      console.error("[Gemini] Invalid choice structure:", JSON.stringify(choice));
+      throw new Error("Invalid response from AI service - no message in choice");
+    }
+
+    const content = choice.message.content;
+    if (!content) {
+      console.error("[Gemini] Empty content in message:", JSON.stringify(choice.message));
+      throw new Error("Empty content from AI service");
+    }
+
+    // Handle case where content might be an array (multimodal response)
+    let textContent: string;
+    if (typeof content === "string") {
+      textContent = content;
+    } else if (Array.isArray(content)) {
+      // Find the text content in the array
+      const textPart = content.find((part: any) => part.type === "text");
+      if (textPart && "text" in textPart) {
+        textContent = textPart.text;
+      } else {
+        console.error("[Gemini] No text content found in array:", JSON.stringify(content));
+        throw new Error("No text content in AI response");
+      }
+    } else {
+      console.error("[Gemini] Unexpected content type:", typeof content);
+      throw new Error("Unexpected content type from AI service");
+    }
+
+    console.log("[Gemini] Parsing JSON content:", textContent.substring(0, 200));
+
+    const result = JSON.parse(textContent) as ReceiptExtractionResult;
     
-    if (daysSinceReceipt > 30 && !result.flags.includes("Receipt too old")) {
-      result.flags.push("Receipt too old");
-      result.reasoning += ` Note: Receipt is ${daysSinceReceipt} days old, exceeding the 30-day policy limit.`;
+    // Additional date validation
+    if (result.transactionDate) {
+      const receiptDate = new Date(result.transactionDate);
+      const daysSinceReceipt = Math.floor((Date.now() - receiptDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (daysSinceReceipt > 30 && !result.flags.includes("Receipt too old")) {
+        result.flags.push("Receipt too old");
+        result.reasoning += ` Note: Receipt is ${daysSinceReceipt} days old, exceeding the 30-day policy limit.`;
+      }
     }
+    
+    console.log("[Gemini] Extraction successful:", result.merchantName, result.amountTotal);
+    return result;
+  } catch (error) {
+    console.error("[Gemini] Error during extraction:", error);
+    
+    // Return a default result with error flag instead of throwing
+    // This allows the user to still manually enter the data
+    return {
+      merchantName: null,
+      transactionDate: null,
+      amountTotal: null,
+      amountGst: null,
+      category: "Other" as ExpenseCategory,
+      confidence: 0,
+      reasoning: `AI extraction failed: ${error instanceof Error ? error.message : "Unknown error"}. Please enter the receipt details manually.`,
+      flags: ["AI extraction failed"],
+      lineItems: []
+    };
   }
-  
-  return result;
 }
 
 export async function validateReceiptPolicy(
@@ -210,37 +271,52 @@ Check for:
 2. Amount limits (S$40 for meals, S$50 for petty cash)
 3. Any suspicious patterns`;
 
-  const response = await invokeLLM({
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt }
-    ],
-    response_format: {
-      type: "json_schema",
-      json_schema: {
-        name: "policy_validation",
-        strict: true,
-        schema: {
-          type: "object",
-          properties: {
-            isValid: { type: "boolean" },
-            flags: { 
-              type: "array",
-              items: { type: "string" }
+  try {
+    const response = await invokeLLM({
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "policy_validation",
+          strict: true,
+          schema: {
+            type: "object",
+            properties: {
+              isValid: { type: "boolean" },
+              flags: { 
+                type: "array",
+                items: { type: "string" }
+              },
+              reasoning: { type: "string" }
             },
-            reasoning: { type: "string" }
-          },
-          required: ["isValid", "flags", "reasoning"],
-          additionalProperties: false
+            required: ["isValid", "flags", "reasoning"],
+            additionalProperties: false
+          }
         }
       }
+    });
+
+    if (!response?.choices?.[0]?.message?.content) {
+      throw new Error("Invalid response from AI service");
     }
-  });
 
-  const content = response.choices[0]?.message?.content;
-  if (!content || typeof content !== "string") {
-    throw new Error("Failed to get policy validation response");
+    const content = response.choices[0].message.content;
+    const textContent = typeof content === "string" 
+      ? content 
+      : Array.isArray(content) 
+        ? (content.find((p: any) => p.type === "text") as any)?.text || ""
+        : "";
+
+    return JSON.parse(textContent);
+  } catch (error) {
+    console.error("[Gemini] Policy validation error:", error);
+    return {
+      isValid: true,
+      flags: ["Policy validation unavailable"],
+      reasoning: "Could not validate against policy. Manual review recommended."
+    };
   }
-
-  return JSON.parse(content);
 }

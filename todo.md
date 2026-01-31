@@ -68,3 +68,6 @@
 - [x] Test complete workflow end-to-end
 - [x] Error handling and loading states
 - [x] Mobile responsiveness for Staff view
+
+## Bug Fixes
+- [x] Fix upload error: Cannot read properties of undefined (reading '0') in AI extraction
