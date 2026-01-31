@@ -558,7 +558,7 @@ export default function AdminView() {
 
               {/* Right: Details */}
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div>
                     <p className="text-xs text-muted-foreground">Merchant</p>
                     <p className="font-medium">
@@ -568,6 +568,14 @@ export default function AdminView() {
                   <div>
                     <p className="text-xs text-muted-foreground">Staff</p>
                     <p className="font-medium">{selectedReceipt.staffName}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Date</p>
+                    <p className="font-medium">
+                      {selectedReceipt.transactionDate
+                        ? new Date(selectedReceipt.transactionDate).toLocaleDateString()
+                        : "Unknown"}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Amount</p>
@@ -583,15 +591,7 @@ export default function AdminView() {
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Category</p>
-                    <Badge variant="outline">{selectedReceipt.category}</Badge>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Date</p>
-                    <p className="font-medium">
-                      {selectedReceipt.transactionDate
-                        ? new Date(selectedReceipt.transactionDate).toLocaleDateString()
-                        : "Unknown"}
-                    </p>
+                    <Badge variant="outline" className="whitespace-nowrap">{selectedReceipt.category}</Badge>
                   </div>
                 </div>
 

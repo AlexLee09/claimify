@@ -86,3 +86,4 @@
 - [x] Remove text from sidebar branding, show only larger logo
 - [x] Fix AI incorrectly flagging past dates as future (date comparison bug)
 - [x] Make receipt details modal even wider to prevent content overlap
+- [x] Fix category and date fields overlapping in receipt details modal
