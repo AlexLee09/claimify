@@ -80,7 +80,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
             <img 
               src="/bok-seng-logo.png" 
               alt="Bok Seng Petty Cash System" 
-              className="h-14 object-contain"
+              className="h-20 object-contain"
             />
           </div>
         </div>
