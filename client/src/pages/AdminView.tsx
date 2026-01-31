@@ -306,19 +306,19 @@ export default function AdminView() {
 
       {/* Main Content Tabs */}
       <Tabs defaultValue="receipts" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="receipts" className="flex items-center gap-2">
+        <TabsList className="gap-2">
+          <TabsTrigger value="receipts" className="flex items-center gap-2 px-4">
             <FileText className="w-4 h-4" />
             Receipts
           </TabsTrigger>
-          <TabsTrigger value="requests" className="flex items-center gap-2">
+          <TabsTrigger value="requests" className="flex items-center gap-2 px-4">
             <Package className="w-4 h-4" />
             Top-Up Requests
             {allBatches && allBatches.length > 0 && (
               <Badge variant="secondary" className="ml-1">{allBatches.length}</Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="activity" className="flex items-center gap-2">
+          <TabsTrigger value="activity" className="flex items-center gap-2 px-4">
             <History className="w-4 h-4" />
             Activity Log
           </TabsTrigger>

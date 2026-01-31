@@ -79,3 +79,5 @@
 - [x] Add Bok Seng logo to top left of sidebar
 - [x] Remove "Hackathon Demo Mode" text from sidebar
 - [x] Add activity logging for rejected items visible to dept admin
+
+- [x] Add more spacing between tab items in Admin view
